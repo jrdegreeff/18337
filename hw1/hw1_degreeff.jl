@@ -7,6 +7,7 @@ using InteractiveUtils
 # ╔═╡ 18001f83-bbf1-4477-b787-2244f48c9a85
 begin
 	using BenchmarkTools
+	using Distributed
 	using Distributions
 	using LaTeXStrings
 	using Plots
@@ -208,7 +209,7 @@ md"""
 """
 
 # ╔═╡ 2b15e600-b301-43e1-8e41-e638880f39e1
-function calculate_bifurcation_single(rs, x₀, num_attract)
+function calculate_bifurcation(rs, x₀, num_attract)
 	data = Matrix{Float64}(undef, num_attract, length(rs))
 	for (out, r) ∈ zip(eachcol(data), rs)
 		calc_attractor!(out, logistic(r), x₀)
@@ -238,7 +239,7 @@ end;
 begin
 	rs = 2.4:0.001:4
 	num_attract = 500
-	data = calculate_bifurcation_single(rs, x₀, num_attract)
+	data = calculate_bifurcation(rs, x₀, num_attract)
 	plot_bifurcation(rs, data)
 end
 
@@ -247,21 +248,23 @@ md"""
 ### Part 3
 """
 
+# ╔═╡ 33856b61-2ee4-4adc-b39b-2ae89cd3ff80
+Threads.nthreads()
+
 # ╔═╡ 4507d03e-30f8-48ae-8ad7-ee4201da101e
-function calculate_bifurcation_multi(rs, x₀, num_attract)
+function calculate_bifurcation_threads(rs, x₀, num_attract)
 	data = Matrix{Float64}(undef, num_attract, length(rs))
-	Threads.@threads for (i, r) ∈ collect(enumerate(rs))
-		out = @view data[:, i]  # I found this to be faster than collecting eachcol
-		calc_attractor!(out, logistic(r), x₀)
+	Threads.@threads for i ∈ 1:length(rs)
+		calc_attractor!((@view data[:, i]), logistic(rs[i]), x₀)
 	end
 	data
 end;
 
-# ╔═╡ ebbfca02-edd4-44f1-8232-0c1e2b1a123f
-single_t = 1000 * @belapsed calculate_bifurcation_single(rs, x₀, num_attract)
+# ╔═╡ 6a1c1f01-b326-4a1b-91d3-605bee55ce62
+single_t = 1000 * @belapsed calculate_bifurcation(rs, x₀, num_attract)
 
-# ╔═╡ b8153c2b-7c0a-4025-9796-d8591c136ab7
-multi_t = 1000 * @belapsed calculate_bifurcation_multi(rs, x₀, num_attract)
+# ╔═╡ 855570f4-b59e-4c37-baec-28cfcb5f1711
+multi_t = 1000 * @belapsed calculate_bifurcation_threads(rs, x₀, num_attract)
 
 # ╔═╡ 71e81bfa-8edd-4a51-b94c-4953758089be
 single_t / multi_t  # speedup
@@ -276,7 +279,7 @@ md"""
 ### Part 4
 """
 
-# ╔═╡ c12689a1-090f-42f1-9e75-feb9d31cb2d4
+# ╔═╡ 5f86103e-7670-43a6-a48f-ce2cd6ba8218
 
 
 # ╔═╡ a0399b73-24e8-4e06-9e0d-6a04409ba71d
@@ -291,6 +294,7 @@ md"""
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
@@ -1351,13 +1355,14 @@ version = "0.9.1+5"
 # ╠═7843a4c3-9577-4839-a3d4-8ab4beb171a3
 # ╠═a6efc540-1004-461b-b26a-eeb49d4258bf
 # ╟─a523778d-915d-4649-a165-481eb118349c
+# ╠═33856b61-2ee4-4adc-b39b-2ae89cd3ff80
 # ╠═4507d03e-30f8-48ae-8ad7-ee4201da101e
-# ╠═ebbfca02-edd4-44f1-8232-0c1e2b1a123f
-# ╠═b8153c2b-7c0a-4025-9796-d8591c136ab7
+# ╠═6a1c1f01-b326-4a1b-91d3-605bee55ce62
+# ╠═855570f4-b59e-4c37-baec-28cfcb5f1711
 # ╠═71e81bfa-8edd-4a51-b94c-4953758089be
 # ╟─21f4c877-296e-436f-9f10-ee72cac62a4a
 # ╟─b0288677-8acb-49b9-9f2e-4743af799cc1
-# ╠═c12689a1-090f-42f1-9e75-feb9d31cb2d4
+# ╠═5f86103e-7670-43a6-a48f-ce2cd6ba8218
 # ╟─a0399b73-24e8-4e06-9e0d-6a04409ba71d
 # ╠═585c0a64-7e4c-4fd3-aba9-74a8995c8c6f
 # ╟─00000000-0000-0000-0000-000000000001
